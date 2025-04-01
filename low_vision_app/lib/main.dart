@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'menu_ocr_screen.dart';
+import 'kitchen_scan_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -55,9 +57,11 @@ class ButtonScreen extends StatelessWidget {
                 height: 80,
                 child: ElevatedButton(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Kitchen Assistant Pressed')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const KitchenScanScreen(),
+                      ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -74,8 +78,11 @@ class ButtonScreen extends StatelessWidget {
                 height: 80,
                 child: ElevatedButton(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Menu Assistant Pressed')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MenuOCRScreen(),
+                      ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
