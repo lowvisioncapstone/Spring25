@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:path/path.dart';
 
 class MenuOCRScreen extends StatefulWidget {
   const MenuOCRScreen({super.key});
@@ -17,40 +18,49 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
   final _picker = ImagePicker();
   final _tts = FlutterTts();
 
-  final String apiUrl =
-      'http://128.180.121.231:5000/extract_text'; // Replace with your actual IP
+  final String apiUrl = 'http://128.180.121.231:5010/upload';
 
-  Future<void> _takePhotoAndRecognize() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.camera);
+  Future<void> captureAndSendImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.camera);
 
-    if (pickedFile != null) {
-      setState(() => _imageFile = File(pickedFile.path));
-      await _uploadAndRecognize(File(pickedFile.path));
+    if (pickedFile == null) {
+      print('No image captured.');
+      return;
     }
-  }
 
-  Future<void> _uploadAndRecognize(File image) async {
-    final request = http.MultipartRequest('POST', Uri.parse(apiUrl));
-    request.files.add(await http.MultipartFile.fromPath('image', image.path));
+    setState(() {
+      _imageFile = File(pickedFile.path);
+    });
+
+    final uri = Uri.parse('http://128.180.121.231:5010/upload');
+    final request = http.MultipartRequest('POST', uri);
+    request.files.add(await http.MultipartFile.fromPath(
+      'image',
+      pickedFile.path,
+      filename: basename(pickedFile.path),
+    ));
 
     try {
       final response = await request.send();
+
       if (response.statusCode == 200) {
-        final responseBody = await response.stream.bytesToString();
-        final text = _extractTextFromJson(responseBody);
-        setState(() => _resultText = text);
-        _speak(text);
+        final responseBytes = await response.stream.toBytes();
+        String responseText = String.fromCharCodes(responseBytes);
+        print('Received text: $responseText');
+
+        setState(() {
+          _resultText = responseText;
+        });
       } else {
-        setState(() => _resultText = 'Error: ${response.statusCode}');
+        print('Upload failed with status: ${response.statusCode}');
       }
     } catch (e) {
-      setState(() => _resultText = 'Failed to connect to server.');
+      print('Error uploading image: $e');
+      setState(() {
+        _resultText = 'Error uploading image: $e';
+      });
     }
-  }
-
-  String _extractTextFromJson(String jsonStr) {
-    final match = RegExp(r'"extracted_text"\s*:\s*"(.+?)"').firstMatch(jsonStr);
-    return match != null ? match.group(1) ?? '' : 'No text found.';
   }
 
   Future<void> _speak(String text) async {
@@ -68,7 +78,7 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
         child: Column(
           children: [
             ElevatedButton.icon(
-              onPressed: _takePhotoAndRecognize,
+              onPressed: captureAndSendImage,
               icon: const Icon(Icons.camera_alt),
               label: const Text('Take Photo'),
             ),
