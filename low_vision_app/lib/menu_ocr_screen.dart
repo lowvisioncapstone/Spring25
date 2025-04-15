@@ -22,6 +22,17 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
 
   Future<void> captureAndSendImage() async {
     final picker = ImagePicker();
+
+    try {
+      final preSignalResponse = await http.post(
+        Uri.parse('http://128.180.121.231:5010/pre_capture'),
+        headers: {'Content-Type': 'text/plain'},
+        body: 'text',
+      );
+    } catch (e) {
+      print('Error sending repo signal: $e');
+    }
+
     final pickedFile = await picker.pickImage(source: ImageSource.camera);
 
     if (pickedFile == null) {
