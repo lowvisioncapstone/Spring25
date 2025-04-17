@@ -25,7 +25,7 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
 
     try {
       final preSignalResponse = await http.post(
-        Uri.parse('http://128.180.121.231:5010/pre_capture'),
+        Uri.parse('http://128.180.121.231:5010/repo'),
         headers: {'Content-Type': 'text/plain'},
         body: 'text',
       );

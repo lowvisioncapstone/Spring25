@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.low_vision_app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35 //changed from flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
