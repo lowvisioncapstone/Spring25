@@ -63,6 +63,8 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
         setState(() {
           _resultText = responseText;
         });
+
+        await _speak(responseText);
       } else {
         print('Upload failed with status: ${response.statusCode}');
       }
@@ -77,6 +79,7 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
   Future<void> _speak(String text) async {
     await _tts.setLanguage("en-US");
     await _tts.setSpeechRate(0.5);
+    await _tts.setVolume(1.0);
     await _tts.speak(text);
   }
 
