@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'menu_ocr_screen.dart';
 import 'kitchen_scan_screen.dart';
+import 'kitchen_instruction_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -60,7 +61,7 @@ class ButtonScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const KitchenScanScreen(),
+                        builder: (_) => const KitchenInstructionPage(),
                       ),
                     );
                   },
