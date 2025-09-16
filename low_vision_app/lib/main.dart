@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'menu_ocr_screen.dart';
 import 'kitchen_scan_screen.dart';
 import 'kitchen_instruction_page.dart';
+<<<<<<< HEAD
+=======
+
+>>>>>>> 362c100e128e4b75e3cc5bd92cd4ea2ab7eec3df
 void main() {
   runApp(const MyApp());
 }
