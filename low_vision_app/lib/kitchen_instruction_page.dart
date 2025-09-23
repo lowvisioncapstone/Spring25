@@ -23,24 +23,39 @@ class KitchenInstructionPage extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             const Text(
-              '1. Prepare your kitchen area and make sure it is well-lit.',
+              '1. Say (for now, type) the name of the recipe you want to cook.',
+              style: TextStyle(fontSize: 18),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              '2. Listen to the provided options and select the recipe you would like to prepare, or, select \'more\' to hear more options.',
+              style: TextStyle(fontSize: 18),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              '3. Prepare your kitchen area and make sure it is well-lit.',
+              style: TextStyle(fontSize: 18),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              '4. Listen carefully to the instructions, take photos when prompted, and listen to the feedback.',
               style: TextStyle(fontSize: 18),
             ),
             const SizedBox(height: 10),
             const Text(
-              '2. Tap the "Start" button to open the camera.',
+              '5. Tap the "Start" button to begin.',
               style: TextStyle(fontSize: 18),
             ),
-            const SizedBox(height: 10),
-            const Text(
-              '3. Point the camera at objects you want to recognize.',
-              style: TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              '4. The app will detect and label kitchen items on screen.',
-              style: TextStyle(fontSize: 18),
-            ),
+            // const SizedBox(height: 10),
+            // const Text(
+            //   '6. Point the camera at objects you want to recognize.',
+            //   style: TextStyle(fontSize: 18),
+            // ),
+            // const SizedBox(height: 10),
+            // const Text(
+            //   '7. The app will detect and label kitchen items on screen.',
+            //   style: TextStyle(fontSize: 18),
+            // ),
             const SizedBox(height: 30),
             const Divider(),
             const Text(

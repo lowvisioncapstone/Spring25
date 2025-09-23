@@ -6,7 +6,8 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path/path.dart';
 
 class KitchenScanScreen extends StatefulWidget {
-  const KitchenScanScreen({super.key});
+  final String recipeName;
+  const KitchenScanScreen({super.key, required this.recipeName});
 
   @override
   State<KitchenScanScreen> createState() => _KitchenScanScreenState();
