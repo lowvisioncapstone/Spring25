@@ -15,7 +15,9 @@ class KitchenScanScreen extends StatefulWidget {
 
 class _KitchenScanScreenState extends State<KitchenScanScreen> {
   File? _imageFile;
+  File? _imageFile1;
   String _resultText = '';
+  String _resultText1 = '';
   final _picker = ImagePicker();
   final _tts = FlutterTts();
 
@@ -93,15 +95,33 @@ class _KitchenScanScreenState extends State<KitchenScanScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
+            const Text(
+              'Step 1: Take a photo of your vegetable drawer!', //remove this later and put in own page
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
             ElevatedButton.icon(
               onPressed: captureAndSendImage,
               icon: const Icon(Icons.kitchen),
-              label: const Text('Scan Kitchen Object'),
+              label: const Text('Scan vegetables'),
             ),
             const SizedBox(height: 20),
             if (_imageFile != null) Image.file(_imageFile!, height: 200),
             const SizedBox(height: 20),
             Text(_resultText, style: const TextStyle(fontSize: 18)),
+
+            const Text(
+              'Step 2: Take a photo of your knife rack or utensils drawer!', //remove this later and put in own page
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            ElevatedButton.icon(
+              onPressed: captureAndSendImage,
+              icon: const Icon(Icons.kitchen),
+              label: const Text('Scan Kitchen utensils'),
+            ),
+            const SizedBox(height: 20),
+            if (_imageFile1 != null) Image.file(_imageFile1!, height: 200),
+            const SizedBox(height: 20),
+            Text(_resultText1, style: const TextStyle(fontSize: 18)),
           ],
         ),
       ),
