@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path/path.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'app_settings.dart'; // <-- import local settings
 
 class MenuOCRScreen extends StatefulWidget {
   const MenuOCRScreen({super.key});
@@ -38,15 +39,21 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
   }
 
   // Ask user what food they want
-  Future<void> askFoodChoice() async {
+Future<void> askFoodChoice() async {
+  if (AppSettings.enableTTS) {
     await _speak("What food would you like to eat?");
+  }
 
+  if (AppSettings.enableSTT) {
     bool available = await _speech.initialize(
       onStatus: (status) => print("Speech status: $status"),
       onError: (error) => print("Speech error: $error"),
     );
 
     if (available) {
+      // Wait 2 seconds so TTS doesn't get picked up
+      await Future.delayed(const Duration(seconds: 2));
+
       await _speech.listen(
         onResult: (result) {
           setState(() {
@@ -60,6 +67,7 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
       print("Speech recognition not available");
     }
   }
+}
 
   Future<void> captureAndSendImage() async {
     final picker = ImagePicker();
@@ -105,7 +113,9 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
           _resultText = responseText;
         });
 
-        await _speak(responseText);
+        if (AppSettings.enableTTS) {
+          await _speak(responseText);
+        }
       } else {
         print('Upload failed with status: ${response.statusCode}');
       }
@@ -123,8 +133,6 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
     await _tts.setVolume(1.0);
     await _tts.speak(text);
   }
-
-  //bool _isConfirming = false; // track first/second press
 
   void _submitFoodChoice() async {
     final currentChoice = _foodController.text.trim();
@@ -145,7 +153,10 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
         _resultText =
             "You said: $_pendingChoice\nPress Submit again to confirm, or edit to retry.";
       });
-      await _speak("You said $_pendingChoice. Is this correct? If not, please retry.");
+
+      if (AppSettings.enableTTS) {
+        await _speak("You said $_pendingChoice. Is this correct? If not, please retry.");
+      }
     } else {
       // Second submit: save confirmed choice
       setState(() {
@@ -157,7 +168,6 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
       print("Final food choice confirmed: $_foodChoice");
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -195,11 +205,12 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
             ),
             const SizedBox(height: 10),
 
-            ElevatedButton.icon(
-              onPressed: askFoodChoice,
-              icon: const Icon(Icons.mic),
-              label: const Text("Say Answer Again"),
-            ),
+            if (AppSettings.enableSTT)
+              ElevatedButton.icon(
+                onPressed: askFoodChoice,
+                icon: const Icon(Icons.mic),
+                label: const Text("Say Answer Again"),
+              ),
             const SizedBox(height: 10),
 
             ElevatedButton.icon(
@@ -215,7 +226,7 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
                   style: const TextStyle(fontSize: 18, color: Colors.blue)),
 
             const Divider(height: 40),
-            
+
             if (_imageFile != null) Image.file(_imageFile!, height: 200),
             const SizedBox(height: 20),
             Text(_resultText, style: const TextStyle(fontSize: 18)),
