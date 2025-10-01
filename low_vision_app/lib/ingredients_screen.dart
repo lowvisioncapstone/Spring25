@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'steps_screen.dart'; // We'll create this next
+import 'steps_screen.dart'; 
+import 'camera.dart';
 
 class IngredientsScreen extends StatelessWidget {
   final String title;
@@ -36,8 +37,32 @@ class IngredientsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+
             Center(
-              child: ElevatedButton(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('Open Camera'),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CameraPage(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      side: const BorderSide(color: Colors.black, width: 2),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+              
+              ElevatedButton(
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -51,6 +76,8 @@ class IngredientsScreen extends StatelessWidget {
                 },
                 child: const Text('View Steps'),
               ),
+                ],
+            ),
             ),
           ],
         ),
