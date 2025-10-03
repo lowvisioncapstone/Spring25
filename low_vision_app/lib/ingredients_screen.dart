@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'steps_screen.dart'; 
 import 'camera.dart';
+import 'tts_service.dart';
 
 class IngredientsScreen extends StatelessWidget {
   final String title;
@@ -75,6 +76,17 @@ class IngredientsScreen extends StatelessWidget {
                   );
                 },
                 child: const Text('View Steps'),
+              ),
+              const SizedBox(width:12),
+              ElevatedButton(
+                onPressed:() async{
+                  final lines = ingredients.map((e)=> e.toString()).toList();
+                  if(lines.isNotEmpty){
+                    await TtsService.instance.speak('Ingredients for $title.');
+                    await TtsService.instance.speakLines(lines);
+                  }
+                },
+                child: const Text('Read Ingredients'),
               ),
                 ],
             ),
