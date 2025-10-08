@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'tts_service.dart';
 
 class StepsScreen extends StatefulWidget {
   final String title;
@@ -26,6 +27,15 @@ class _StepsScreenState extends State<StepsScreen> {
         .split(RegExp(r'\. |\n')) // You can refine this further
         .where((step) => step.trim().isNotEmpty)
         .toList();
+      if(steps.isNotEmpty){
+        TtsService.instance.speak('Step 1. ${steps[0].trim()}');
+      }
+  }
+
+  @override
+  void dispose(){
+    TtsService.instance.stop();
+    super.dispose();
   }
 
   void _nextStep() {
@@ -33,6 +43,7 @@ class _StepsScreenState extends State<StepsScreen> {
       setState(() {
         currentStepIndex++;
       });
+      TtsService.instance.speak('Step ${currentStepIndex + 1}. ${steps[currentStepIndex].trim()}');
     }
   }
 
@@ -41,6 +52,7 @@ class _StepsScreenState extends State<StepsScreen> {
       setState(() {
         currentStepIndex--;
       });
+      TtsService.instance.speak('Step ${currentStepIndex + 1}. ${steps[currentStepIndex].trim()}');
     }
   }
 
@@ -77,6 +89,14 @@ class _StepsScreenState extends State<StepsScreen> {
                   onPressed: currentStepIndex > 0 ? _prevStep : null,
                   child: const Text('Back'),
                 ),
+                ElevatedButton(
+                  onPressed:()=> TtsService.instance.speak('Step ${currentStepIndex + 1}. ${steps[currentStepIndex].trim()}',),
+                  child: const Text('Speak'),
+                )
+                ElevatedButton(
+                  onPressed:()=> TtsService.instance.stop(),
+                  child: const Text('Stop'),
+                )
                 ElevatedButton(
                   onPressed: currentStepIndex < steps.length - 1 ? _nextStep : null,
                   child: const Text('Next'),

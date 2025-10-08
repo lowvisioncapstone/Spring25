@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'steps_screen.dart'; 
 import 'camera.dart';
+<<<<<<< HEAD
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+=======
+import 'tts_service.dart';
+>>>>>>> 0883a8cdb3b6ce7e0b2c470c1287d7634edd6a17
 
 class IngredientsScreen extends StatelessWidget {
   final String title;
@@ -96,6 +100,7 @@ class IngredientsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
               
+<<<<<<< HEAD
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -122,6 +127,33 @@ class IngredientsScreen extends StatelessWidget {
                 ],
               )
 
+=======
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => StepsScreen(
+                        title: title,
+                        instructions: instructions,
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('View Steps'),
+              ),
+              const SizedBox(width:12),
+              ElevatedButton(
+                onPressed:() async{
+                  final lines = ingredients.map((e)=> e.toString()).toList();
+                  if(lines.isNotEmpty){
+                    await TtsService.instance.speak('Ingredients for $title.');
+                    await TtsService.instance.speakLines(lines);
+                  }
+                },
+                child: const Text('Read Ingredients'),
+              ),
+>>>>>>> 0883a8cdb3b6ce7e0b2c470c1287d7634edd6a17
                 ],
             ),
             ),
