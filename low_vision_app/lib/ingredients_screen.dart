@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'steps_screen.dart'; 
 import 'camera.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
 
 class IngredientsScreen extends StatelessWidget {
   final String title;
@@ -13,6 +16,37 @@ class IngredientsScreen extends StatelessWidget {
     required this.ingredients,
     required this.instructions,
   });
+
+  Future<void> saveRecipe(BuildContext context) async {
+    const String backendUrl = 'http://128.180.121.231:5010/save_recipe'; 
+
+    try {
+      final response = await http.post(
+        Uri.parse(backendUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'title': title,
+          'ingredients': ingredients,
+          'instructions': instructions,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Recipe saved!')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save: ${response.body}')),
+        );
+      }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -62,20 +96,32 @@ class IngredientsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
               
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => StepsScreen(
-                        title: title,
-                        instructions: instructions,
-                      ),
-                    ),
-                  );
-                },
-                child: const Text('View Steps'),
-              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => StepsScreen(
+                            title: title,
+                            instructions: instructions,
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text('View Steps'),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.bookmark_add),
+                    label: const Text('Save Recipe'),
+                    onPressed: () => saveRecipe(context),
+                  ),
+                ],
+              )
+
                 ],
             ),
             ),

@@ -34,8 +34,10 @@ class _RecipeSearchScreenState extends State<RecipeSearchScreen> {
       _searchGoogle(widget.recipeName);
     }
 
-  Future<void> _searchGoogle(String query) async{
-    final url = 'https://www.googleapis.com/customsearch/v1?key=$apiKey&cx=$searchEngineID&q=$query&start=$_startIndex';
+  Future<void> _searchGoogle(String query, {bool isNext = true}) async{
+    int newStartIndex = isNext ? _startIndex + 5 : _startIndex - 5;
+    if (newStartIndex < 1) return;
+    final url = 'https://www.googleapis.com/customsearch/v1?key=$apiKey&cx=$searchEngineID&q=$query&start=$newStartIndex';
 
     try{
       final response = await http.get(Uri.parse(url));
@@ -44,20 +46,22 @@ class _RecipeSearchScreenState extends State<RecipeSearchScreen> {
       if (response.statusCode == 200){
         final items = data['items'] as List<dynamic>?; 
 
-        if (items != null && items.isNotEmpty){
-          setState((){
-            _results = items.take(5).toList();
-            _startIndex +=5;
-            _hasMore = items.length == 10; //check if there are 10 more
-            _loading = false;
-          });
-        } else{
-          setState(() {
-            _hasMore = false;
-            _loading = false;
-          });
-        }
+        
+        setState((){
+          _results = items?.take(5).toList() ?? [];
+          _startIndex +=5;
+          _hasMore = items != null && items.length == 10; //check if there are 10 more
+          _loading = false;
+        });
+        
       } 
+      else{
+        setState(() {
+        _loading = false;
+        _error = 'Failed to load data';
+      });
+
+      }
     }catch (e) {
         setState((){
           _error = 'Error occurred:  $e';
@@ -104,16 +108,35 @@ Widget build(BuildContext context) {
                         },
                       ),
                     ),
-                    if (_hasMore && !_loading)
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _loading = true;
-                          });
-                          _searchGoogle(widget.recipeName);
-                        },
-                        child: const Text("View more recipes"),
+                    
+                    if (!_loading)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          if (_startIndex > 6) // Show "Previous" only if we're past page 1
+                            ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _loading = true;
+                                });
+                                _searchGoogle(widget.recipeName, isNext: false);
+                              },
+                              child: const Text("Previous"),
+                            ),
+                          if (_hasMore)
+                            ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _loading = true;
+                                });
+                                _searchGoogle(widget.recipeName, isNext: true);
+                              },
+                              child: const Text("Next"),
+                            ),
+                        ],
                       ),
+
+
                     if (_loading) const Padding(
                       padding: EdgeInsets.symmetric(vertical: 16),
                       child: CircularProgressIndicator(),
