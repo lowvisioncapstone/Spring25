@@ -92,11 +92,11 @@ class _StepsScreenState extends State<StepsScreen> {
                 ElevatedButton(
                   onPressed:()=> TtsService.instance.speak('Step ${currentStepIndex + 1}. ${steps[currentStepIndex].trim()}',),
                   child: const Text('Speak'),
-                )
+                ),
                 ElevatedButton(
                   onPressed:()=> TtsService.instance.stop(),
                   child: const Text('Stop'),
-                )
+                ),
                 ElevatedButton(
                   onPressed: currentStepIndex < steps.length - 1 ? _nextStep : null,
                   child: const Text('Next'),

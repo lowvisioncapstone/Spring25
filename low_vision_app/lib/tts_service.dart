@@ -1,4 +1,4 @@
-// lib/services/tts_service.dart
+// lib/tts_service.dart
 import 'dart:async';
 import 'package:flutter_tts/flutter_tts.dart';
 
@@ -9,6 +9,7 @@ class TtsService {
   final FlutterTts _tts = FlutterTts();
   bool _inited = false;
   bool _isSpeaking = false;
+  String? _lastText;
 
   Future<void> init({
     String language = 'en-US',
@@ -17,34 +18,59 @@ class TtsService {
     double volume = 1.0,
   }) async {
     if (_inited) return;
+
     await _tts.setLanguage(language);
     await _tts.setSpeechRate(rate);
     await _tts.setPitch(pitch);
     await _tts.setVolume(volume);
 
-    _tts.setStartHandler(() => _isSpeaking = true);
-    _tts.setCompletionHandler(() => _isSpeaking = false);
-    _tts.setCancelHandler(() => _isSpeaking = false);
+    await _tts.awaitSpeakCompletion(true);
+
+    _tts.setStartHandler(() {
+      _isSpeaking = true;
+    });
+    _tts.setCompletionHandler(() {
+      _isSpeaking = false;
+    });
+    _tts.setCancelHandler(() {
+      _isSpeaking = false;
+    });
+    _tts.setPauseHandler(() {
+      _isSpeaking = false;
+    });
 
     _inited = true;
   }
 
   Future<void> speak(String text) async {
     await init();
-    if (text.trim().isEmpty) return;
+    final t = text.trim();
+    if (t.isEmpty) return;
+
+    _lastText = t;
+
     if (_isSpeaking) {
       await _tts.stop();
+      _isSpeaking = false;
+      await Future.delayed(const Duration(milliseconds: 50));
     }
-    await _tts.speak(text);
+
+    await _tts.speak(t);
   }
 
-  Future<void> speakLines(List<String> lines, {Duration gap = const Duration(milliseconds: 300)}) async {
+  Future<void> speakLines(
+    List<String> lines, {
+    Duration gap = const Duration(milliseconds: 300),
+  }) async {
     await init();
-    for (final line in lines) {
-      if (line.trim().isEmpty) continue;
+    for (final raw in lines) {
+      final line = raw.trim();
+      if (line.isEmpty) continue;
+
       await speak(line);
+
       while (_isSpeaking) {
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future.delayed(const Duration(milliseconds: 80));
       }
       await Future.delayed(gap);
     }
@@ -57,10 +83,12 @@ class TtsService {
 
   Future<void> pause() async {
     await _tts.pause();
+    _isSpeaking = false;
   }
 
   Future<void> resume() async {
-    await _tts.resume();
+    if (_lastText == null || _lastText!.isEmpty) return;
+    await speak(_lastText!);
   }
 
   bool get isSpeaking => _isSpeaking;
