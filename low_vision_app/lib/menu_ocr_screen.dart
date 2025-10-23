@@ -6,6 +6,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path/path.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
+
 class MenuOCRScreen extends StatefulWidget {
   const MenuOCRScreen({super.key});
 
@@ -18,52 +19,57 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
   String _resultText = '';
   final _picker = ImagePicker();
   final _tts = FlutterTts();
-  final _speech = stt.SpeechToText();
+
+  
+  final stt.SpeechToText _speech = stt.SpeechToText();
 
   String _foodChoice = "";
-  String? _pendingChoice; // Stores choice being confirmed
+  String? _pendingChoice; 
   final TextEditingController _foodController = TextEditingController();
 
   final String apiUrl = 'http://128.180.121.231:5010/upload';
 
   bool _isConfirming = false;
 
+  bool _loading = false;
   @override
   void initState() {
     super.initState();
-    // Ask food choice as soon as screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       askFoodChoice();
     });
   }
 
-  // Ask user what food they want
   Future<void> askFoodChoice() async {
+    await _tts.stop(); 
     await _speak("What food would you like to eat?");
 
-    bool available = await _speech.initialize(
-      onStatus: (status) => print("Speech status: $status"),
-      onError: (error) => print("Speech error: $error"),
+    final bool available = await _speech.initialize(
+      onStatus: (status) => debugPrint("Speech status: $status"),
+      onError: (error) => debugPrint("Speech error: $error"),
     );
 
     if (available) {
       await _speech.listen(
         onResult: (result) {
+          final words = result.recognizedWords;
           setState(() {
-            _foodChoice = result.recognizedWords;
-            _foodController.text = _foodChoice; // show in text field
+            _foodChoice = words;
+            _foodController.text = words; 
           });
-          print("User said: $_foodChoice");
+          debugPrint("User said: $_foodChoice");
         },
       );
     } else {
-      print("Speech recognition not available");
+      debugPrint("Speech recognition not available");
+      setState(() {
+        _resultText = "Voice input temporarily unavailable.";
+      });
     }
   }
 
-  Future<void> captureAndSendImage() async {
-    final picker = ImagePicker();
 
+  Future<void> captureAndSendImage() async {
     try {
       await http.post(
         Uri.parse('http://128.180.121.231:5010/repo'),
@@ -71,18 +77,20 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
         body: 'text',
       );
     } catch (e) {
-      print('Error sending repo signal: $e');
+      debugPrint('Error sending repo signal: $e');
     }
 
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+    final pickedFile = await _picker.pickImage(source: ImageSource.camera); 
 
     if (pickedFile == null) {
-      print('No image captured.');
+      debugPrint('No image captured.');
       return;
     }
 
     setState(() {
       _imageFile = File(pickedFile.path);
+      _resultText = '';
+      _loading = true;
     });
 
     final uri = Uri.parse(apiUrl);
@@ -98,8 +106,8 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
 
       if (response.statusCode == 200) {
         final responseBytes = await response.stream.toBytes();
-        String responseText = String.fromCharCodes(responseBytes);
-        print('Received text: $responseText');
+        final String responseText = String.fromCharCodes(responseBytes);
+        debugPrint('Received text: $responseText');
 
         setState(() {
           _resultText = responseText;
@@ -107,29 +115,36 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
 
         await _speak(responseText);
       } else {
-        print('Upload failed with status: ${response.statusCode}');
+        debugPrint('Upload failed with status: ${response.statusCode}');
+        setState(() {
+          _resultText = 'Upload failed: ${response.statusCode}';
+        });
       }
     } catch (e) {
-      print('Error uploading image: $e');
+      debugPrint('Error uploading image: $e');
       setState(() {
         _resultText = 'Error uploading image: $e';
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false; 
+        });
+      }
     }
   }
 
   Future<void> _speak(String text) async {
+    await _tts.stop();
     await _tts.setLanguage("en-US");
     await _tts.setSpeechRate(0.5);
     await _tts.setVolume(1.0);
     await _tts.speak(text);
   }
 
-  //bool _isConfirming = false; // track first/second press
-
   void _submitFoodChoice() async {
     final currentChoice = _foodController.text.trim();
 
-    // If user changed their input while confirming, reset
     if (_isConfirming && currentChoice != _pendingChoice) {
       setState(() {
         _isConfirming = false;
@@ -138,7 +153,6 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
     }
 
     if (!_isConfirming) {
-      // First submit: ask confirmation
       setState(() {
         _pendingChoice = currentChoice;
         _isConfirming = true;
@@ -147,17 +161,15 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
       });
       await _speak("You said $_pendingChoice. Is this correct? If not, please retry.");
     } else {
-      // Second submit: save confirmed choice
       setState(() {
         _foodChoice = _pendingChoice ?? currentChoice;
         _resultText = "✅ Food choice saved: $_foodChoice";
         _isConfirming = false;
         _pendingChoice = null;
       });
-      print("Final food choice confirmed: $_foodChoice");
+      debugPrint("Final food choice confirmed: $_foodChoice");
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -165,8 +177,9 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
       appBar: AppBar(title: const Text('Menu OCR')),
       body: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        //child: Column(
+          //crossAxisAlignment: CrossAxisAlignment.start,
+        child: ListView(
           children: [
             const Text(
               "What food would you like to eat?",
@@ -174,7 +187,6 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
             ),
             const SizedBox(height: 10),
 
-            // Text field
             TextField(
               controller: _foodController,
               decoration: const InputDecoration(
@@ -184,7 +196,6 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
               onChanged: (value) {
                 setState(() {
                   _foodChoice = value;
-                  // Reset confirmation if text changes
                   if (_isConfirming && value != _pendingChoice) {
                     _isConfirming = false;
                     _pendingChoice = null;
@@ -202,6 +213,7 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
             ),
             const SizedBox(height: 10),
 
+            
             ElevatedButton.icon(
               onPressed: _submitFoodChoice,
               icon: const Icon(Icons.check),
@@ -215,7 +227,15 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
                   style: const TextStyle(fontSize: 18, color: Colors.blue)),
 
             const Divider(height: 40),
-            
+
+          ElevatedButton.icon(
+            onPressed: _loading ? null : captureAndSendImage, 
+            icon: const Icon(Icons.photo_camera),
+            label: const Text("Take Photo & Recognize"),
+          ),
+          const SizedBox(height: 16),
+
+
             if (_imageFile != null) Image.file(_imageFile!, height: 200),
             const SizedBox(height: 20),
             Text(_resultText, style: const TextStyle(fontSize: 18)),
