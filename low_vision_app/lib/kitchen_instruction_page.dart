@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'kitchen_recipe_select.dart';
+import 'saved_recipes_page.dart'; // NEW IMPORT
 
 class KitchenInstructionPage extends StatelessWidget {
   const KitchenInstructionPage({super.key});
@@ -46,16 +47,6 @@ class KitchenInstructionPage extends StatelessWidget {
               '5. Tap the "Start" button to begin.',
               style: TextStyle(fontSize: 18),
             ),
-            // const SizedBox(height: 10),
-            // const Text(
-            //   '6. Point the camera at objects you want to recognize.',
-            //   style: TextStyle(fontSize: 18),
-            // ),
-            // const SizedBox(height: 10),
-            // const Text(
-            //   '7. The app will detect and label kitchen items on screen.',
-            //   style: TextStyle(fontSize: 18),
-            // ),
             const SizedBox(height: 30),
             const Divider(),
             const Text(
@@ -64,22 +55,44 @@ class KitchenInstructionPage extends StatelessWidget {
             ),
             const Spacer(),
             Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const KitchenRecipeSelectPage(),
+              child: Column(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const KitchenRecipeSelectPage(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 40, vertical: 15),
+                      textStyle: const TextStyle(fontSize: 20),
+                      side: const BorderSide(color: Colors.black, width: 2),
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                  textStyle: const TextStyle(fontSize: 20),
-                  side: const BorderSide(color: Colors.black, width: 2),
-                ),
-                child: const Text('Start'),
+                    child: const Text('Start'),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SavedRecipesPage(),
+                        ),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 30, vertical: 15),
+                      textStyle: const TextStyle(fontSize: 18),
+                      side: const BorderSide(color: Colors.black),
+                    ),
+                    child: const Text('Select from Saved Recipes'),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 20),

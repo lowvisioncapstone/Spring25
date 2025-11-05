@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'steps_screen.dart'; 
-import 'camera.dart';
+import 'camera_ingredients.dart';
 import 'tts_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -84,7 +84,9 @@ class IngredientsScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const CameraPage(),
+                          builder: (_) => CameraPage(
+                            ingredientList: ingredients,
+                          ),
                         ),
                       );
                     },

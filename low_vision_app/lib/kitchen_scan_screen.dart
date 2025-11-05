@@ -182,7 +182,7 @@ class _KitchenScanScreenState extends State<KitchenScanScreen> {
         page,
         if (_loading) 
           Container(
-            color: Colors.black.withValues(alpha: 0.25),
+            // color: Colors.black.withValues(alpha: 0.25),
             child: const Center(child: CircularProgressIndicator()),
           ),
       ],
