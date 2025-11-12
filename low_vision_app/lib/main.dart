@@ -15,8 +15,34 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      initialRoute: '/main',
-      debugShowCheckedModeBanner: false,
+      title: 'Low Vision Daily Companion',
+      theme: ThemeData(
+        scaffoldBackgroundColor: Colors.black,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.orange,
+          centerTitle: true,
+          elevation: 0,
+        ),
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(fontSize: 26, color: Colors.orange),
+          bodyMedium: TextStyle(fontSize: 24, color: Colors.orange),
+          labelLarge: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.orange,
+            foregroundColor: Colors.black,
+            textStyle: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+            minimumSize: const Size(280, 90),
+            side: const BorderSide(color: Colors.black, width: 3),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(16)),
+            ),
+          ),
+        ),
+      ),
+      initialRoute: '/login',
       routes: {
         '/login': (_) => const LoginPage(),
         '/main': (_) => const MainScreen(),
@@ -31,34 +57,21 @@ class MainScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const backgroundColor = Colors.black;
-    const appBarColor = Color(0xFFFFA500); // orange
-    const accentGreen = Color(0xFF00C853);
-
+    final scale = MediaQuery.of(context).textScaleFactor.clamp(1.0, 1.5);
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
-        toolbarHeight: 200,
-        backgroundColor: appBarColor,
-        title: const Center(
-          child: SizedBox(
-            width: double.infinity,
-            child: Text(
-              'Low Vision Daily Companion',
-              style: TextStyle(
-                fontSize: 40,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-              textAlign: TextAlign.center,
-              softWrap: true,
-              overflow: TextOverflow.visible,
-            ),
+        toolbarHeight: 160,
+        title: Text(
+          'Daily Vision \nCompanion',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 36 * scale,
+            fontWeight: FontWeight.bold,
+            color: Colors.orange,
           ),
         ),
       ),
-      backgroundColor: backgroundColor,
-      body: const ButtonScreen(),
+      body: const SafeArea(child: ButtonScreen()),
     );
   }
 }
@@ -68,103 +81,71 @@ class ButtonScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const accentGreen = Color(0xFF00C853);
+    final scale = MediaQuery.of(context).textScaleFactor.clamp(1.0, 1.5);
+    final buttonSpacing = SizedBox(height: 30 * scale);
 
-    return Column(
-      children: [
-        const Spacer(),
-        Center(
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Semantics(
+          label: 'Daily Vision \nCompanion',
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(
-                width: 250,
-                height: 80,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const KitchenInstructionPage(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accentGreen,
-                    foregroundColor: Colors.black,
-                    side: const BorderSide(color: Colors.white, width: 2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  child: const Text('Kitchen Assistant'),
+              AccessibleButton(
+                label: 'Kitchen Assistant',
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const KitchenInstructionPage()),
                 ),
               ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: 250,
-                height: 80,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const MenuOCRScreen(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accentGreen,
-                    foregroundColor: Colors.black,
-                    side: const BorderSide(color: Colors.white, width: 2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  child: const Text('Menu Assistant'),
+              buttonSpacing,
+              AccessibleButton(
+                label: 'Menu Assistant',
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MenuOCRScreen()),
                 ),
               ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: 250,
-                height: 80,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const UserProfileScreen(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accentGreen,
-                    foregroundColor: Colors.black,
-                    side: const BorderSide(color: Colors.white, width: 2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  child: const Text('User Profile'),
+              buttonSpacing,
+              AccessibleButton(
+                label: 'User Profile',
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const UserProfileScreen()),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 100),
-      ],
+      ),
+    );
+  }
+}
+
+class AccessibleButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+
+  const AccessibleButton({super.key, required this.label, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+      ),
     );
   }
 }
