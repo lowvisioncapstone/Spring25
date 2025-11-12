@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'menu_ocr_screen.dart';
 import 'kitchen_scan_screen.dart';
 import 'kitchen_instruction_page.dart';
+import 'user_profile_screen.dart';
 import 'login_page.dart';
 import 'register_page.dart';
 
@@ -106,6 +108,26 @@ class ButtonScreen extends StatelessWidget {
                     textStyle: const TextStyle(fontSize: 24),
                   ),
                   child: const Text('Menu Assistant'),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: 250,
+                height: 80,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const UserProfileScreen(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    side: const BorderSide(color: Colors.black, width: 2),
+                    textStyle: const TextStyle(fontSize: 24),
+                  ),
+                  child: const Text('User Profile'),
                 ),
               ),
             ],

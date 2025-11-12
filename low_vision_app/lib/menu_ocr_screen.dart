@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path/path.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'app_settings.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 class MenuOCRScreen extends StatefulWidget {
@@ -16,122 +18,35 @@ class MenuOCRScreen extends StatefulWidget {
 
 class _MenuOCRScreenState extends State<MenuOCRScreen> {
   File? _imageFile;
+  String? _menuText;
+  bool _menuReady = false;
+  bool _menuRead = false;
   String _resultText = '';
+  String _foodChoice = "";
+  String? _pendingChoice;
+  bool _isConfirming = false;
+
   final _picker = ImagePicker();
   final _tts = FlutterTts();
-
-  
-  final stt.SpeechToText _speech = stt.SpeechToText();
-
-  String _foodChoice = "";
-  String? _pendingChoice; 
+  final _speech = stt.SpeechToText();
   final TextEditingController _foodController = TextEditingController();
 
-  final String apiUrl = 'http://128.180.121.231:5010/upload';
+  final String uploadUrl = 'http://128.180.121.231:5010/upload';
+  final String foodUrl = 'http://128.180.121.231:5010/food_selection';
+  final String saveMenuUr = 'http://128.180.121.231:5010/save_menu';
 
-  bool _isConfirming = false;
+  List<Map<String, dynamic>> savedMenus = [];
 
   bool _loading = false;
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      askFoodChoice();
-    });
-  }
-
-  Future<void> askFoodChoice() async {
-    await _tts.stop(); 
-    await _speak("What food would you like to eat?");
-
-    final bool available = await _speech.initialize(
-      onStatus: (status) => debugPrint("Speech status: $status"),
-      onError: (error) => debugPrint("Speech error: $error"),
-    );
-
-    if (available) {
-      await _speech.listen(
-        onResult: (result) {
-          final words = result.recognizedWords;
-          setState(() {
-            _foodChoice = words;
-            _foodController.text = words; 
-          });
-          debugPrint("User said: $_foodChoice");
-        },
-      );
-    } else {
-      debugPrint("Speech recognition not available");
-      setState(() {
-        _resultText = "Voice input temporarily unavailable.";
-      });
-    }
-  }
-
-
-  Future<void> captureAndSendImage() async {
-    try {
-      await http.post(
-        Uri.parse('http://128.180.121.231:5010/repo'),
-        headers: {'Content-Type': 'text/plain'},
-        body: 'text',
-      );
-    } catch (e) {
-      debugPrint('Error sending repo signal: $e');
-    }
-
-    final pickedFile = await _picker.pickImage(source: ImageSource.camera); 
-
-    if (pickedFile == null) {
-      debugPrint('No image captured.');
-      return;
-    }
-
-    setState(() {
-      _imageFile = File(pickedFile.path);
-      _resultText = '';
-      _loading = true;
-    });
-
-    final uri = Uri.parse(apiUrl);
-    final request = http.MultipartRequest('POST', uri);
-    request.files.add(await http.MultipartFile.fromPath(
-      'image',
-      pickedFile.path,
-      filename: basename(pickedFile.path),
-    ));
-
-    try {
-      final response = await request.send();
-
-      if (response.statusCode == 200) {
-        final responseBytes = await response.stream.toBytes();
-        final String responseText = String.fromCharCodes(responseBytes);
-        debugPrint('Received text: $responseText');
-
-        setState(() {
-          _resultText = responseText;
-        });
-
-        await _speak(responseText);
-      } else {
-        debugPrint('Upload failed with status: ${response.statusCode}');
-        setState(() {
-          _resultText = 'Upload failed: ${response.statusCode}';
-        });
+    _loadSavedMenus();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (AppSettings.enableTTS) {
+        await _speak("Please scan the menu to continue.");
       }
-    } catch (e) {
-      debugPrint('Error uploading image: $e');
-      setState(() {
-        _resultText = 'Error uploading image: $e';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loading = false; 
-        });
-      }
-    }
+    });
   }
 
   Future<void> _speak(String text) async {
@@ -142,7 +57,87 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
     await _tts.speak(text);
   }
 
-  void _submitFoodChoice() async {
+  Future<void> captureAndSendImage() async {
+    if (AppSettings.enableTTS) await _speak("Opening camera. Please hold your phone steady.");
+    final pickedFile = await _picker.pickImage(source: ImageSource.camera);
+
+    if (pickedFile == null) {
+      if (AppSettings.enableTTS) await _speak("No image captured. Please try again.");
+      return;
+    }
+
+    setState(() {
+      _imageFile = File(pickedFile.path);
+      _menuReady = false;
+      _menuText = null;
+    });
+
+    try {
+      final preSignalResponse = await http.post(
+        Uri.parse('http://128.180.121.231:5010/repo'),
+        headers: {'Content-Type': 'text/plain'},
+        body: 'text',
+      );
+      print("Repo pre-signal status: ${preSignalResponse.statusCode}");
+    } catch (e) {
+      print('Error sending repo signal: $e');
+    }
+
+    final uri = Uri.parse(uploadUrl);
+    final request = http.MultipartRequest('POST', uri);
+    request.files.add(await http.MultipartFile.fromPath(
+      'image',
+      pickedFile.path,
+      filename: basename(pickedFile.path),
+    ));
+
+    try {
+      if (AppSettings.enableTTS) await _speak("Uploading image. Please wait.");
+      final response = await request.send();
+
+      if (response.statusCode == 200) {
+        final responseBytes = await response.stream.toBytes();
+        String responseText = String.fromCharCodes(responseBytes);
+
+        setState(() {
+          _menuText = responseText;
+          _menuReady = true;
+        });
+
+        if (AppSettings.enableTTS) await _speak("Menu scanned successfully.");
+        await askFoodChoice();
+      } else {
+        print('Upload failed with status: ${response.statusCode}');
+        if (AppSettings.enableTTS) await _speak("Failed to upload image.");
+      }
+    } catch (e) {
+      print('Error uploading image: $e');
+      if (AppSettings.enableTTS) await _speak("There was an error uploading the image.");
+    }
+  }
+
+  Future<void> askFoodChoice() async {
+    if (AppSettings.enableTTS) {
+      await _speak("What food would you like to eat?");
+    }
+
+    if (AppSettings.enableSTT) {
+      bool available = await _speech.initialize();
+      if (available) {
+        await Future.delayed(const Duration(seconds: 2));
+        await _speech.listen(
+          onResult: (result) {
+            setState(() {
+              _foodChoice = result.recognizedWords;
+              _foodController.text = _foodChoice;
+            });
+          },
+        );
+      }
+    }
+  }
+
+  void _submitFoodChoice(BuildContext context) async {
     final currentChoice = _foodController.text.trim();
 
     if (_isConfirming && currentChoice != _pendingChoice) {
@@ -159,87 +154,234 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
         _resultText =
             "You said: $_pendingChoice\nPress Submit again to confirm, or edit to retry.";
       });
-      await _speak("You said $_pendingChoice. Is this correct? If not, please retry.");
+      if (AppSettings.enableTTS) {
+        _speak("You said $_pendingChoice. Press submit again to confirm.");
+      }
     } else {
+      final confirmed = _pendingChoice ?? currentChoice;
       setState(() {
-        _foodChoice = _pendingChoice ?? currentChoice;
-        _resultText = "✅ Food choice saved: $_foodChoice";
+        _foodChoice = confirmed;
         _isConfirming = false;
         _pendingChoice = null;
+        _resultText = "✅ Food choice saved: $_foodChoice\nWaiting for response...";
       });
-      debugPrint("Final food choice confirmed: $_foodChoice");
+
+      try {
+        final response = await http.post(
+          Uri.parse(foodUrl),
+          headers: {'Content-Type': 'application/json'},
+          body: '{"choice": "$confirmed"}',
+        );
+
+        final responseText = response.body;
+
+        setState(() {
+          _resultText = "✅ Food choice saved: $_foodChoice\n\nResponse:\n$responseText";
+        });
+
+        if (AppSettings.enableTTS) {
+          await _speak(responseText);
+        }
+
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text("Food Selection Response"),
+            content: SingleChildScrollView(child: Text(responseText)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Close"),
+              )
+            ],
+          ),
+        );
+      } catch (e) {
+        print("Error sending food choice: $e");
+        setState(() {
+          _resultText = "❌ Error sending food choice: $e";
+        });
+        if (AppSettings.enableTTS) {
+          _speak("There was an error sending your food choice.");
+        }
+      }
     }
+  }
+
+  Future<void> _loadSavedMenus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getStringList('saved_menus') ?? [];
+    setState(() {
+      savedMenus = saved.map((e) => {"text": e}).toList();
+    });
+  }
+
+  Future<void> _saveCurrentMenu(BuildContext context) async {
+    if (_menuText == null || _menuText!.isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    List<String> saved = prefs.getStringList('saved_menus') ?? [];
+    String entry =
+        "${DateTime.now().toLocal()}:\n${_menuText!.trim()}";
+    saved.add(entry);
+    await prefs.setStringList('saved_menus', saved);
+
+    setState(() {
+      savedMenus.add({"text": entry});
+      _menuRead = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("✅ Menu saved locally")),
+    );
+    if (AppSettings.enableTTS) await _speak("Menu saved successfully.");
+  }
+
+  void _readMenu(BuildContext context) async {
+    if (_menuReady && _menuText != null) {
+      if (AppSettings.enableTTS) await _speak("Reading the menu now.");
+      await _speak(_menuText!);
+
+      setState(() {
+        _menuRead = true;
+      });
+
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("Menu"),
+          content: SingleChildScrollView(child: Text(_menuText!)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            )
+          ],
+        ),
+      );
+    } else {
+      final msg = "Menu is still processing...";
+      if (AppSettings.enableTTS) _speak(msg);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(msg)));
+    }
+  }
+
+  Widget _buildButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 40),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 100),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Menu OCR')),
+      appBar: AppBar(
+        title: const Text(
+          'Menu OCR',
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.yellowAccent,
+      ),
+      backgroundColor: Colors.black,
       body: Padding(
         padding: const EdgeInsets.all(20),
-        //child: Column(
-          //crossAxisAlignment: CrossAxisAlignment.start,
-        child: ListView(
-          children: [
-            const Text(
-              "What food would you like to eat?",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-
-            TextField(
-              controller: _foodController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Type or speak your answer",
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _buildButton(
+                label: "Scan Menu",
+                icon: Icons.camera_alt,
+                color: Colors.black,
+                onPressed: captureAndSendImage,
               ),
-              onChanged: (value) {
-                setState(() {
-                  _foodChoice = value;
-                  if (_isConfirming && value != _pendingChoice) {
-                    _isConfirming = false;
-                    _pendingChoice = null;
-                    _resultText = "";
-                  }
-                });
-              },
-            ),
-            const SizedBox(height: 10),
-
-            ElevatedButton.icon(
-              onPressed: askFoodChoice,
-              icon: const Icon(Icons.mic),
-              label: const Text("Say Answer Again"),
-            ),
-            const SizedBox(height: 10),
-
-            
-            ElevatedButton.icon(
-              onPressed: _submitFoodChoice,
-              icon: const Icon(Icons.check),
-              label: const Text("Submit Answer"),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            ),
-            const SizedBox(height: 20),
-
-            if (_foodChoice.isNotEmpty)
-              Text("Current choice: $_foodChoice",
-                  style: const TextStyle(fontSize: 18, color: Colors.blue)),
-
-            const Divider(height: 40),
-
-          ElevatedButton.icon(
-            onPressed: _loading ? null : captureAndSendImage, 
-            icon: const Icon(Icons.photo_camera),
-            label: const Text("Take Photo & Recognize"),
+              const SizedBox(height: 25),
+              _buildButton(
+                label: "Read Menu",
+                icon: Icons.volume_up,
+                color: Colors.orange,
+                onPressed: () => _readMenu(context),
+              ),
+              if (_menuRead)
+                Padding(
+                  padding: const EdgeInsets.only(top: 20),
+                  child: _buildButton(
+                    label: "Save Menu",
+                    icon: Icons.save,
+                    color: Colors.green,
+                    onPressed: () => _saveCurrentMenu(context),
+                  ),
+                ),
+              const Divider(height: 40, color: Colors.white70),
+              TextField(
+                controller: _foodController,
+                style: const TextStyle(
+                    fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.grey[800],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  hintText: "Type or say your food choice",
+                  hintStyle: const TextStyle(color: Colors.white54, fontSize: 22),
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildButton(
+                label: "Submit Answer",
+                icon: Icons.check_circle,
+                color: Colors.green,
+                onPressed: () => _submitFoodChoice(context),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                _resultText,
+                style: const TextStyle(fontSize: 22, color: Colors.white),
+              ),
+              if (savedMenus.isNotEmpty) ...[
+                const Divider(color: Colors.white70),
+                const Text("Saved Menus:",
+                    style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.yellowAccent)),
+                for (var menu in savedMenus.reversed)
+                  Container(
+                    margin: const EdgeInsets.only(top: 10),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[900],
+                      border: Border.all(color: Colors.white70),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      menu["text"] ?? "",
+                      style: const TextStyle(
+                          fontSize: 20, color: Colors.white, height: 1.4),
+                    ),
+                  ),
+              ],
+            ],
           ),
-          const SizedBox(height: 16),
-
-
-            if (_imageFile != null) Image.file(_imageFile!, height: 200),
-            const SizedBox(height: 20),
-            Text(_resultText, style: const TextStyle(fontSize: 18)),
-          ],
         ),
       ),
     );
