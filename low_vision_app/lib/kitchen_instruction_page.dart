@@ -49,12 +49,12 @@ class KitchenInstructionPage extends StatelessWidget {
               const _InstructionStep(
                 number: '1.',
                 text:
-                    'Say (for now, type) the name of the recipe you want to cook.',
+                    'Say or type the name of the recipe you want to cook.',
               ),
               const _InstructionStep(
                 number: '2.',
                 text:
-                    'Listen to the provided options and select the recipe you would like to prepare, or select "more" to hear more options.',
+                    'Listen to the provided options and select the recipe you would like to prepare.',
               ),
               const _InstructionStep(
                 number: '3.',
@@ -71,18 +71,18 @@ class KitchenInstructionPage extends StatelessWidget {
                 text: 'Tap the "Start" button to begin.',
               ),
 
-              const SizedBox(height: 30),
-              Divider(color: accentGreen, thickness: 2),
-              const SizedBox(height: 10),
+              // const SizedBox(height: 30),
+              // Divider(color: accentGreen, thickness: 2),
+              // const SizedBox(height: 1),
 
-              const Text(
-                '👉 Next, you will be asked to select a recipe to start.',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  color: primaryTextColor,
-                ),
-              ),
+              // const Text(
+              //   '👉 Next, you will be asked to select a recipe to start.',
+              //   style: TextStyle(
+              //     fontSize: 18,
+              //     fontWeight: FontWeight.w500,
+              //     color: primaryTextColor,
+              //   ),
+              // ),
 
               const SizedBox(height: 40),
 
@@ -121,7 +121,7 @@ class KitchenInstructionPage extends StatelessWidget {
                       },
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 30, vertical: 15),
+                            horizontal: 30, vertical: 10),
                         textStyle: const TextStyle(fontSize: 18),
                         side: const BorderSide(color: accentGreen, width: 2),
                         foregroundColor: accentGreen,
@@ -131,7 +131,7 @@ class KitchenInstructionPage extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
             ],
           ),
         ),
