@@ -4,6 +4,8 @@ import 'menu_ocr_screen.dart';
 import 'kitchen_scan_screen.dart';
 import 'kitchen_instruction_page.dart';
 import 'user_profile_screen.dart';
+import 'login_page.dart';
+import 'register_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,30 +17,44 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          centerTitle: true,
-          toolbarHeight: 200,
-          backgroundColor: const Color(0xFF99ccff),
-          title: const Center(
-            child: SizedBox(
-              width: double.infinity,
-              child: Text(
-                'Low Vision Daily Companion',
-                style: TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-                softWrap: true,
-                overflow: TextOverflow.visible,
+      initialRoute: '/login',
+      routes: {
+        '/login': (_) => const LoginPage(),
+        '/main' : (_) => const MainScreen(),
+        '/register': (_) => const RegisterPage(),
+      },
+    );
+  }
+}
+
+class MainScreen extends StatelessWidget {
+  const MainScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        centerTitle: true,
+        toolbarHeight: 200,
+        backgroundColor: const Color(0xFF99ccff),
+        title: const Center(
+          child: SizedBox(
+            width: double.infinity,
+            child: Text(
+              'Low Vision Daily Companion',
+              style: TextStyle(
+                fontSize: 40,
+                fontWeight: FontWeight.bold,
               ),
+              textAlign: TextAlign.center,
+              softWrap: true,
+              overflow: TextOverflow.visible,
             ),
           ),
         ),
-        backgroundColor: const Color(0xFF99ccff),
-        body: const ButtonScreen(),
       ),
+      backgroundColor: const Color(0xFF99ccff),
+      body: const ButtonScreen(),
     );
   }
 }

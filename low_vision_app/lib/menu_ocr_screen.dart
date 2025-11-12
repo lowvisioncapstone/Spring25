@@ -8,6 +8,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'app_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+
 class MenuOCRScreen extends StatefulWidget {
   const MenuOCRScreen({super.key});
 
@@ -36,6 +37,7 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
 
   List<Map<String, dynamic>> savedMenus = [];
 
+  bool _loading = false;
   @override
   void initState() {
     super.initState();
@@ -48,6 +50,7 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
   }
 
   Future<void> _speak(String text) async {
+    await _tts.stop();
     await _tts.setLanguage("en-US");
     await _tts.setSpeechRate(0.5);
     await _tts.setVolume(1.0);
