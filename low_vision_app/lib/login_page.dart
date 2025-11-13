@@ -16,7 +16,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _loading = false;
   String? _error;
 
-  static const String baseUrl = 'http://10.0.2.2:5010'; // Replace with real IP later
+  static const String baseUrl = 'http://128.180.121.231:5010'; // Replace with real IP later
 
   Future<void> _login() async {
     if (!_form.currentState!.validate()) return;
