@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'tts_service.dart';
+import 'camera_boil.dart';
 
 class StepsScreen extends StatefulWidget {
   final String title;
@@ -123,6 +124,11 @@ class _StepsScreenState extends State<StepsScreen> {
         backgroundColor: accentTextColor,
         foregroundColor: Colors.black,
         actions: [
+          IconButton(
+            tooltip: 'Toolbox',
+            onPressed: () => _openToolbox(),
+            icon: const Icon(Icons.construction, color: Colors.black),
+          ),
           IconButton(
             tooltip: 'End cooking',
             onPressed: _endCooking,
@@ -338,4 +344,95 @@ class _StepsScreenState extends State<StepsScreen> {
       ),
     );
   }
+
+  void _openToolbox() {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.black87,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) {
+      return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Toolbox',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            _toolboxButton(
+              icon: Icons.blur_on,
+              label: 'Mold Detector',
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Navigate to mold detector
+              },
+            ),
+
+            const SizedBox(height: 12),
+
+            _toolboxButton(
+              icon: Icons.local_fire_department,
+              label: 'Boil Detector',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const BoilDetectorPage(),
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 20),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Widget _toolboxButton({
+  required IconData icon,
+  required String label,
+  required VoidCallback onTap,
+}) {
+  return InkWell(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.orange, size: 26),
+          const SizedBox(width: 16),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+
 }
