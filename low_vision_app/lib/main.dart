@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'menu_ocr_screen.dart';
-import 'kitchen_scan_screen.dart';
 import 'kitchen_instruction_page.dart';
 import 'user_profile_screen.dart';
 import 'login_page.dart';
