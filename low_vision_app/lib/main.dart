@@ -42,7 +42,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      initialRoute: '/main',
+      initialRoute: '/login',
       routes: {
         '/login': (_) => const LoginPage(),
         '/main': (_) => const MainScreen(),
@@ -112,7 +112,7 @@ class ButtonScreen extends StatelessWidget {
                 label: 'User Profile',
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const UserProfileScreen()),
+                  MaterialPageRoute(builder: (_) => UserProfileScreen()),
                 ),
               ),
             ],
