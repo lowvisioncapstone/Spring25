@@ -101,7 +101,7 @@ class ButtonScreen extends StatelessWidget {
               ),
               buttonSpacing,
               AccessibleButton(
-                label: 'Menu Assistant',
+                label: 'Restaurant Assistant',
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const MenuOCRScreen()),
