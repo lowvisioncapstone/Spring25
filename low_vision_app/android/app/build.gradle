@@ -8,14 +8,16 @@ android {
     namespace "com.example.low_vision_app"
 
     // ✅ SAFE, STABLE
-    compileSdk 34
+    compileSdk 36
+    ndkVersion  "28.2.13676358"
 
     defaultConfig {
         applicationId "com.example.low_vision_app"
 
         // ✅ Explicit values (REQUIRED)
-        minSdk 21
-        targetSdk 34
+        minSdkVersion flutter.minSdkVersion
+        minSdkVersion flutter.minSdkVersion
+        targetSdk 36
 
         versionCode 1
         versionName "1.0"
