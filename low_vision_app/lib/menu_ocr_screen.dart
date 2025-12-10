@@ -48,7 +48,7 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (AppSettings.enableTTS) {
-        await _speak("Please scan the menu to continue.");
+        await _speak("Please take a picture of the menu to continue.");
       }
     });
   }
@@ -369,7 +369,7 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Menu OCR',
+          'Restaurant Assistant',
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.black,
@@ -383,7 +383,7 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _buildButton(
-                label: "Scan Menu",
+                label: "Take Picture of Menu",
                 icon: Icons.camera_alt,
                 color: Colors.black,
                 onPressed: captureAndSendImage,
@@ -401,7 +401,7 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
                   child: _buildButton(
                     label: "Save Menu",
                     icon: Icons.save,
-                    color: Colors.green,
+                    color: Colors.orange,
                     onPressed: () => _saveCurrentMenu(context),
                   ),
                 ),
