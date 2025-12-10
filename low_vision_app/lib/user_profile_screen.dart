@@ -4,7 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'app_settings.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+
+// ---- DIO COOKIE MANAGER ----
+import 'package:dio/dio.dart';
+import 'package:cookie_jar/cookie_jar.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:path_provider/path_provider.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -21,13 +26,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   final TextEditingController _nameCtrl = TextEditingController();
   final TextEditingController _countryCtrl = TextEditingController();
-  final TextEditingController _addressCtrl = TextEditingController();
   final TextEditingController _allergiesCtrl = TextEditingController();
   final TextEditingController _emailCtrl = TextEditingController();
-  final TextEditingController _dobCtrl = TextEditingController();
   final TextEditingController _phoneCtrl = TextEditingController();
 
+  bool _is21 = false; // NEW — replaces DOB text field entirely
+
+  final TextEditingController _usernameCtrl = TextEditingController();
+final TextEditingController _passwordCtrl = TextEditingController();
+
+bool _showPassword = false;
+
   final String foodUrl = 'http://128.180.121.231:5010/get_profile';
+
+  late Dio dio;
 
   @override
   void initState() {
@@ -35,6 +47,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     AppSettings.load().then((_) => setState(() {}));
     _loadProfile();
     speech.initialize();
+    _initDio();
+  }
+
+  // ---------------- DIO + COOKIE MANAGER SETUP ----------------
+  Future<void> _initDio() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final cookieJar = PersistCookieJar(
+        storage: FileStorage("${appDir.path}/cookies_profile"));
+
+    dio = Dio(BaseOptions(
+      baseUrl: "http://128.180.121.231:5010",
+      headers: {"Content-Type": "application/json"},
+    ));
+
+    dio.interceptors.add(CookieManager(cookieJar));
   }
 
   Future<void> _speak(String text) async {
@@ -67,12 +94,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         .replaceAll(RegExp(r"\bseven\b", caseSensitive: false), "7")
         .replaceAll(RegExp(r"\beight\b", caseSensitive: false), "8")
         .replaceAll(RegExp(r"\bnine\b", caseSensitive: false), "9");
+
     cleaned = cleaned.replaceAll(RegExp(r"[^0-9+-]"), "");
     return cleaned.trim();
   }
 
   Future<void> _listen(TextEditingController controller, String label) async {
     if (!AppSettings.enableSTT) return;
+
     bool available = await speech.initialize();
     if (available) {
       await speech.listen(onResult: (result) async {
@@ -95,37 +124,48 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
+  // ---------------- LOAD PROFILE ----------------
   Future<void> _loadProfile() async {
     final prefs = await SharedPreferences.getInstance();
+
     setState(() {
       _nameCtrl.text = prefs.getString("name") ?? "";
       _countryCtrl.text = prefs.getString("country") ?? "";
-      _addressCtrl.text = prefs.getString("address") ?? "";
       _allergiesCtrl.text = prefs.getString("allergies") ?? "";
       _emailCtrl.text = prefs.getString("email") ?? "";
-      _dobCtrl.text = prefs.getString("dob") ?? "";
       _phoneCtrl.text = prefs.getString("phone") ?? "";
+      _is21 = prefs.getBool("is21") ?? false;
+
+      // NEW
+    _usernameCtrl.text = prefs.getString("username") ?? "";
+    _passwordCtrl.text = prefs.getString("password") ?? "";
     });
+
     await _speak("Profile loaded. You can start editing your information.");
   }
 
+  // ---------------- SAVE PROFILE ----------------
   Future<void> _saveProfile() async {
     final prefs = await SharedPreferences.getInstance();
+
     await prefs.setString("name", _nameCtrl.text);
     await prefs.setString("country", _countryCtrl.text);
-    await prefs.setString("address", _addressCtrl.text);
     await prefs.setString("allergies", _allergiesCtrl.text);
     await prefs.setString("email", _emailCtrl.text);
-    await prefs.setString("dob", _dobCtrl.text);
     await prefs.setString("phone", _phoneCtrl.text);
+    await prefs.setBool("is21", _is21);
 
-    final Map<String, String> profileData = {
+    await prefs.setString("username", _usernameCtrl.text);
+    await prefs.setString("password", _passwordCtrl.text);
+
+    // Address removed → send null to keep backend schema valid
+    final Map<String, dynamic> profileData = {
       "name": _nameCtrl.text,
       "country": _countryCtrl.text,
-      "address": _addressCtrl.text,
+      "address": null,       // <-- stays in JSON but empty
       "allergies": _allergiesCtrl.text,
       "email": _emailCtrl.text,
-      "dob": _dobCtrl.text,
+      "is_21": _is21,        // <-- replaces DOB
       "phone": _phoneCtrl.text,
     };
 
@@ -143,7 +183,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             child: const Text("Cancel", style: TextStyle(color: Colors.white)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFC20A)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFC20A),
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text("Yes", style: TextStyle(color: Colors.black)),
           ),
@@ -154,10 +196,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     if (!confirm) return;
 
     try {
-      final response = await http.post(
-        Uri.parse(foodUrl),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(profileData),
+      final response = await dio.post(
+        "/get_profile",
+        data: jsonEncode(profileData),
+        options: Options(
+          contentType: "application/json",
+          validateStatus: (_) => true,
+        ),
       );
 
       if (response.statusCode == 200) {
@@ -168,7 +213,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       } else {
         _speak("Profile saved locally, but upload failed");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Server error: ${response.statusCode}")),
+          SnackBar(
+              content: Text("Server error: ${response.statusCode}")),
         );
       }
     } catch (e) {
@@ -183,19 +229,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Widget build(BuildContext context) {
     final highContrastBg = const Color(0xFF000000);
     final highContrastText = const Color(0xFFFFFFFF);
-    final highContrastAccent = const Color(0xFFFFC20A); // Yellow (7.2:1 contrast)
+    final highContrastAccent = const Color(0xFFFFC20A);
     final highContrastFieldBg = const Color(0xFF1C1C1C);
 
     return Scaffold(
       backgroundColor: highContrastBg,
       appBar: AppBar(
-        backgroundColor: highContrastAccent,
+        backgroundColor: Colors.orange,
         foregroundColor: Colors.black,
         title: const Text(
           "Accessible User Profile",
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
       ),
+
+      // ---------------- UI ----------------
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -203,67 +251,170 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.account_circle, size: 100, color: Color(0xFFFFC20A)),
+              const Icon(Icons.account_circle,
+                  size: 100, color: Colors.orange),
               const SizedBox(height: 20),
-              Text(
-                "Personal Information",
-                style: TextStyle(
-                  color: highContrastAccent,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+
+              Text("Personal Information",
+                  style: TextStyle(
+                      color: Colors.orange,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold)),
               const Divider(color: Colors.white, thickness: 2),
 
-              buildTextField("Name", _nameCtrl, highContrastText, highContrastFieldBg, highContrastAccent),
-              buildTextField("Country", _countryCtrl, highContrastText, highContrastFieldBg, highContrastAccent),
-              buildTextField("Home Address", _addressCtrl, highContrastText, highContrastFieldBg, highContrastAccent),
-              buildTextField("Do you have any allergies?", _allergiesCtrl, highContrastText, highContrastFieldBg, highContrastAccent),
+              buildTextField("Name", _nameCtrl, highContrastText,
+                  highContrastFieldBg, Colors.orange),
+
+              buildTextField("Country", _countryCtrl, highContrastText,
+                  highContrastFieldBg, Colors.orange),
+
+              // REMOVED Home Address field entirely
+
+              buildTextField(
+                  "Do you have any allergies?",
+                  _allergiesCtrl,
+                  highContrastText,
+                  highContrastFieldBg,
+                  Colors.orange),
 
               const SizedBox(height: 20),
-              Text(
-                "Contact Information",
-                style: TextStyle(
-                  color: highContrastAccent,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+
+              Text("Contact Information",
+                  style: TextStyle(
+                      color: Colors.orange,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold)),
               const Divider(color: Colors.white, thickness: 2),
 
-              buildTextField("Email", _emailCtrl, highContrastText, highContrastFieldBg, highContrastAccent, type: TextInputType.emailAddress),
-              buildTextField("Date of Birth", _dobCtrl, highContrastText, highContrastFieldBg, highContrastAccent),
-              buildTextField("Phone Number", _phoneCtrl, highContrastText, highContrastFieldBg, highContrastAccent, type: TextInputType.phone),
+              // ---------------- USERNAME (READ ONLY) ----------------
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: TextFormField(
+                  controller: _usernameCtrl,
+                  readOnly: true,                      // <-- cannot edit
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: highContrastFieldBg,
+                    labelText: "Username",
+                    labelStyle: TextStyle(
+                      color: Colors.orange,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white70, width: 2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+
+              // ---------------- PASSWORD (READ ONLY + TOGGLE) ----------------
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: TextFormField(
+                  controller: _passwordCtrl,
+                  readOnly: true,                        // <-- cannot edit
+                  obscureText: !_showPassword,           // <-- hides text unless toggled
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: highContrastFieldBg,
+                    labelText: "Password",
+                    labelStyle: TextStyle(
+                      color: Colors.orange,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _showPassword ? Icons.visibility_off : Icons.visibility,
+                        color: Colors.orange,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _showPassword = !_showPassword;   // <-- toggles visibility
+                        });
+                      },
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white70, width: 2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+
+
+              buildTextField("Email", _emailCtrl, highContrastText,
+                  highContrastFieldBg, Colors.orange,
+                  type: TextInputType.emailAddress),
+
+              // ---------- NEW: AGE CHECKBOX ----------
+              CheckboxListTile(
+                title: Text("Are you 21 or older?",
+                    style: TextStyle(color: Colors.orange, fontSize: 18)),
+                value: _is21,
+                activeColor: Colors.orange,
+                checkColor: Colors.black,
+                onChanged: (val) async{
+                  setState(() => _is21 = val ?? false);
+                  final prefs = await SharedPreferences.getInstance();
+                  prefs.setBool("is21", _is21);
+                },
+              ),
+
+              buildTextField("Phone Number", _phoneCtrl, highContrastText,
+                  highContrastFieldBg, Colors.orange,
+                  type: TextInputType.phone),
 
               const SizedBox(height: 30),
+
               SwitchListTile(
-                title: Text("Enable Text-to-Speech", style: TextStyle(color: highContrastText, fontSize: 18)),
+                title: Text("Enable Text-to-Speech",
+                    style: TextStyle(color: Colors.orange, fontSize: 18)),
                 value: AppSettings.enableTTS,
-                activeColor: highContrastAccent,
+                activeColor: Colors.orange,
                 onChanged: (val) {
                   setState(() => AppSettings.enableTTS = val);
                   AppSettings.save();
                 },
               ),
+
               SwitchListTile(
-                title: Text("Enable Speech-to-Text", style: TextStyle(color: highContrastText, fontSize: 18)),
+                title: Text("Enable Speech-to-Text",
+                    style: TextStyle(color: Colors.orange, fontSize: 18)),
                 value: AppSettings.enableSTT,
-                activeColor: highContrastAccent,
+                activeColor: Colors.orange,
                 onChanged: (val) {
                   setState(() => AppSettings.enableSTT = val);
                   AppSettings.save();
                 },
               ),
+
               const SizedBox(height: 20),
+
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: highContrastAccent,
+                  backgroundColor: Colors.orange,
                   padding: const EdgeInsets.symmetric(vertical: 18),
-                  textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  textStyle: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 onPressed: _saveProfile,
-                icon: const Icon(Icons.save, size: 26, color: Colors.black),
-                label: const Text("Save Profile", style: TextStyle(color: Colors.black)),
+                icon:
+                    const Icon(Icons.save, size: 26, color: Colors.black),
+                label: const Text("Save Profile",
+                    style: TextStyle(color: Colors.black)),
               ),
             ],
           ),
@@ -285,13 +436,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       child: TextFormField(
         controller: controller,
         keyboardType: type,
-        style: TextStyle(fontSize: 20, color: textColor, fontWeight: FontWeight.w600),
+        style: TextStyle(
+            fontSize: 20,
+            color: textColor,
+            fontWeight: FontWeight.w600),
         cursorColor: accentColor,
         decoration: InputDecoration(
           filled: true,
           fillColor: fieldBg,
           labelText: label,
-          labelStyle: TextStyle(color: accentColor, fontSize: 18, fontWeight: FontWeight.bold),
+          labelStyle: TextStyle(
+              color: accentColor,
+              fontSize: 18,
+              fontWeight: FontWeight.bold),
           focusedBorder: OutlineInputBorder(
             borderSide: BorderSide(color: accentColor, width: 3),
             borderRadius: BorderRadius.circular(10),

@@ -9,6 +9,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path/path.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
 
 import 'app_settings.dart';
 
@@ -28,6 +29,7 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
   String _foodChoice = "";
   String? _pendingChoice;
   bool _isConfirming = false;
+  String? _currentLocation;
 
   final _picker = ImagePicker();
   final _tts = FlutterTts();
@@ -147,7 +149,64 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
     }
   }
 
+    Future<void> _useCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Check if location services are enabled
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (AppSettings.enableTTS) {
+        await _speak("Location services are disabled.");
+      }
+      setState(() {
+        _currentLocation = "Location services are disabled";
+      });
+      return;
+    }
+
+    // Check permissions
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        setState(() {
+          _currentLocation = "Location permission denied";
+        });
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      setState(() {
+        _currentLocation = "Location permission permanently denied";
+      });
+      return;
+    }
+
+    // Get location
+    final position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    final locationText =
+        "Latitude: ${position.latitude}, Longitude: ${position.longitude}";
+
+    setState(() {
+      _currentLocation = locationText;
+    });
+
+    if (AppSettings.enableTTS) {
+      await _speak("Your current location is $locationText");
+    }
+  }
+
+  
+  
+  
   // ---------------- FOOD CHOICE ----------------
+
+
 
   Future<void> askFoodChoice() async {
     if (AppSettings.enableTTS) {
@@ -430,6 +489,25 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
                 color: Colors.green,
                 onPressed: () => _submitFoodChoice(context),
               ),
+              const SizedBox(height: 20),
+              _buildButton(
+                label: "Use Current Location",
+                icon: Icons.my_location,
+                color: Colors.orange,
+                onPressed: _useCurrentLocation,
+              ),
+              if (_currentLocation != null) ...[
+                const SizedBox(height: 20),
+                Text(
+                  _currentLocation!,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
               const SizedBox(height: 20),
               Text(
                 _resultText,

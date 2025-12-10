@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -92,6 +93,9 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       if (!mounted) return;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("username", _u.text);
+      await prefs.setString("password", _p.text);
 
       Navigator.pushReplacementNamed(
         context,
