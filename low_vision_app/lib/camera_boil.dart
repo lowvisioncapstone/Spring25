@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import 'package:path/path.dart' as p;
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:dio/dio.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:cookie_jar/cookie_jar.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart';
 
 class BoilDetectorPage extends StatefulWidget {
   const BoilDetectorPage({super.key});
@@ -18,33 +21,33 @@ class _BoilDetectorPageState extends State<BoilDetectorPage> {
   final _picker = ImagePicker();
   final _tts = FlutterTts();
 
-  ///  boil detection backend endpoint
-  final String apiUrl = 'http://128.180.121.231:5010/upload';
+  late Dio dio;
+  final String baseUrl = 'http://128.180.121.231:5010';
 
   @override
   void initState() {
     super.initState();
+    _setupDio();
+    Future.delayed(const Duration(milliseconds: 300), captureAndSendImage);
+  }
 
-    // Automatically open the camera
-    Future.delayed(const Duration(milliseconds: 300), () {
-      captureAndSendImage();
-    });
+  Future<void> _setupDio() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final cookieJar = PersistCookieJar(storage: FileStorage('${dir.path}/cookies'));
+
+    dio = Dio(BaseOptions(
+      baseUrl: baseUrl,
+      headers: {'Content-Type': 'application/json'},
+    ));
+
+    dio.interceptors.add(CookieManager(cookieJar));
   }
 
   Future<void> captureAndSendImage() async {
-    try {
-      await http.post(
-        Uri.parse('http://128.180.121.231:5010/repo'),
-        headers: {'Content-Type': 'text/plain'},
-        body: 'boil',
-      );
-    } catch (e) {
-      print('Error sending boil repo signal: $e');
-    }
     final pickedFile = await _picker.pickImage(source: ImageSource.camera);
 
     if (pickedFile == null) {
-      Navigator.pop(context); // user canceled camera
+      Navigator.pop(this.context);
       return;
     }
 
@@ -53,30 +56,36 @@ class _BoilDetectorPageState extends State<BoilDetectorPage> {
       _resultText = "Analyzing...";
     });
 
-    final uri = Uri.parse(apiUrl);
-    final request = http.MultipartRequest("POST", uri);
-
-    request.files.add(await http.MultipartFile.fromPath(
-      'image',
-      pickedFile.path,
-      filename: p.basename(pickedFile.path),
-    ));
-
+    // Send repo signal
     try {
-      final response = await request.send();
+      await dio.post(
+        '/repo',
+        data: 'boil',
+        options: Options(contentType: Headers.textPlainContentType),
+      );
+    } catch (e) {
+      print('Error sending repo signal: $e');
+    }
+
+    // Upload image using Dio + FormData
+    try {
+      final formData = FormData.fromMap({
+        'image': await MultipartFile.fromFile(
+          pickedFile.path,
+          filename: basename(pickedFile.path),
+        ),
+      });
+
+      final response = await dio.post('/upload', data: formData);
 
       if (response.statusCode == 200) {
-        final bytes = await response.stream.toBytes();
-        final text = String.fromCharCodes(bytes);
-
-        setState(() => _resultText = text);
-
-        _speak(text);
+        setState(() => _resultText = response.data.toString());
+        await _speak(_resultText);
       } else {
-        setState(() => _resultText = "Error: ${response.statusCode}");
+        setState(() => _resultText = 'Upload failed: ${response.statusCode}');
       }
     } catch (e) {
-      setState(() => _resultText = "Upload failed: $e");
+      setState(() => _resultText = 'Error uploading image: $e');
     }
   }
 
@@ -93,7 +102,7 @@ class _BoilDetectorPageState extends State<BoilDetectorPage> {
         title: const Text("Boil Detector"),
         backgroundColor: Colors.black,
       ),
-      body: Padding(
+      body: SingleChildScrollView( // <-- Added scrolling
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
@@ -103,15 +112,11 @@ class _BoilDetectorPageState extends State<BoilDetectorPage> {
               label: const Text("Retake Photo"),
             ),
             const SizedBox(height: 20),
-
-            if (_imageFile != null)
-              Image.file(_imageFile!, height: 250),
-
+            if (_imageFile != null) Image.file(_imageFile!, height: 250),
             const SizedBox(height: 20),
-
             Text(
               _resultText,
-              style: const TextStyle(fontSize: 20),
+              style: const TextStyle(fontSize: 40), // larger text
               textAlign: TextAlign.center,
             ),
           ],

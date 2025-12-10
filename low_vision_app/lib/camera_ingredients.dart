@@ -4,6 +4,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:dio/dio.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:cookie_jar/cookie_jar.dart';
+import 'package:path_provider/path_provider.dart';
 
 class CameraPage extends StatefulWidget {
   final List<dynamic> ingredientList;
@@ -19,66 +23,109 @@ class _CameraPageState extends State<CameraPage> {
   final _picker = ImagePicker();
   final _tts = FlutterTts();
 
-  final String apiUrl = 'http://128.180.121.231:5010/upload'; //app server
+  late Dio dio;
+  final String baseUrl = 'http://128.180.121.231:5010';
+
+Future<void> _setupDio() async {
+  final dir = await getApplicationDocumentsDirectory();
+  final cookieJar = PersistCookieJar(
+    storage: FileStorage('${dir.path}/cookies'),
+  );
+
+  dio = Dio(BaseOptions(
+    baseUrl: baseUrl,
+    headers: {'Content-Type': 'application/json'},
+  ));
+
+  dio.interceptors.add(CookieManager(cookieJar));
+}
+
 
   @override
   void initState() {
     super.initState();
+    _setupDio();
     // Open camera automatically after a short delay
-    Future.delayed(Duration(milliseconds: 300), captureAndSendImage);
+      Future.delayed(Duration(milliseconds: 300), captureAndSendImage);
+    }
+
+    Future<void> captureAndSendImage() async {
+  final pickedFile = await _picker.pickImage(source: ImageSource.camera);
+
+  if (pickedFile == null) {
+    Navigator.pop(this.context);
+    return;
   }
 
-  Future<void> captureAndSendImage() async {
-    // optional "signal" to backend
-    try {
-      await http.post(
-        Uri.parse('http://128.180.121.231:5010/repo'),
-        headers: {'Content-Type': 'text/plain'},
-        body: 'object',
-      );
-    } catch (e) {
-      print('Error sending repo signal: $e');
-    }
+  setState(() {
+    _imageFile = File(pickedFile.path);
+    _resultText = 'Processing...';
+  });
 
-    // open camera
-     final pickedFile = await _picker.pickImage(source: ImageSource.camera);
+  // Send repo signal
+  try {
+    await dio.post(
+      '/repo',
+      data: 'object',
+      options: Options(contentType: Headers.textPlainContentType),
+    );
+  } catch (e) {
+    print('Error sending repo signal: $e');
+  }
 
-    if (pickedFile == null) {
-      // If user cancels camera, go back
-      Navigator.pop(context);
-      return;
-    }
-
-    setState(() {
-      _imageFile = File(pickedFile.path);
-      _resultText = 'Processing...';
+  // Upload image
+  try {
+    final formData = FormData.fromMap({
+      'image': await MultipartFile.fromFile(
+        pickedFile.path,
+        filename: p.basename(pickedFile.path),
+      ),
+      'ingredients': widget.ingredientList.isNotEmpty
+          ? widget.ingredientList.join('\n')
+          : '',
     });
 
-    final uri = Uri.parse(apiUrl);
-    final request = http.MultipartRequest('POST', uri);
-    request.files.add(await http.MultipartFile.fromPath(
-      'image',
-      pickedFile.path,
-      filename: p.basename(pickedFile.path),
-    ));
+    final response = await dio.post('/upload', data: formData);
 
-    request.fields['ingredients'] = widget.ingredientList.join('\n');
-
-    try {
-      final response = await request.send();
-      if (response.statusCode == 200) {
-        final responseBytes = await response.stream.toBytes();
-        final responseText = String.fromCharCodes(responseBytes);
-
-        setState(() => _resultText = responseText);
-        await _speak(responseText);
-      } else {
-        setState(() => _resultText = 'Upload failed: ${response.statusCode}');
-      }
-    } catch (e) {
-      setState(() => _resultText = 'Error uploading image: $e');
+    if (response.statusCode == 200) {
+      setState(() => _resultText = response.data.toString());
+      await _speak(_resultText);
+    } else {
+      setState(() => _resultText = 'Upload failed: ${response.statusCode}');
     }
+  } catch (e) {
+    setState(() => _resultText = 'Error uploading image: $e');
   }
+}
+
+
+  
+
+    // final uri = Uri.parse(apiUrl);
+    // final request = http.MultipartRequest('POST', uri);
+    // request.files.add(await http.MultipartFile.fromPath(
+    //   'image',
+    //   pickedFile.path,
+    //   filename: p.basename(pickedFile.path),
+    // ));
+
+    // request.fields['ingredients'] = widget.ingredientList.join('\n');
+
+    // try {
+    //   final response = await request.send();
+    //   if (response.statusCode == 200) {
+    //     final responseBytes = await response.stream.toBytes();
+    //     final responseText = String.fromCharCodes(responseBytes);
+
+    //     setState(() => _resultText = responseText);
+    //     await _speak(responseText);
+    //   } else {
+    //     setState(() => _resultText = 'Upload failed: ${response.statusCode}');
+    //   }
+    // } catch (e) {
+    //   setState(() => _resultText = 'Error uploading image: $e');
+    // }
+  // }
 
   Future<void> _speak(String text) async {
     await _tts.setLanguage("en-US");
@@ -87,12 +134,14 @@ class _CameraPageState extends State<CameraPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Camera Scanner')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(title: const Text('Camera Scanner')),
+    body: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: SingleChildScrollView( // <-- make it scrollable
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ElevatedButton.icon(
               onPressed: captureAndSendImage,
@@ -105,11 +154,13 @@ class _CameraPageState extends State<CameraPage> {
             const SizedBox(height: 20),
             Text(
               _resultText,
-              style: const TextStyle(fontSize: 18),
+              style: const TextStyle(fontSize: 25),
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 }

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import 'steps_screen.dart';
-import 'camera_ingredients.dart';
-import 'tts_service.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:cookie_jar/cookie_jar.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'dart:convert';
 
-class IngredientsScreen extends StatelessWidget {
+import 'steps_screen.dart';
+import 'camera_ingredients.dart';
+
+class IngredientsScreen extends StatefulWidget {
   final String title;
   final List<dynamic> ingredients;
   final String instructions;
@@ -17,19 +20,55 @@ class IngredientsScreen extends StatelessWidget {
     required this.instructions,
   });
 
-  Future<void> saveRecipe(BuildContext context) async {
-    const String backendUrl = 'http://128.180.121.231:5010/save_recipe';
+  @override
+  State<IngredientsScreen> createState() => _IngredientsScreenState();
+}
 
+class _IngredientsScreenState extends State<IngredientsScreen> {
+
+  late Dio dio;
+  final String baseUrl = 'http://128.180.121.231:5010'; 
+  // or change to 8000 if the recipes API is running there.
+
+  @override
+  void initState() {
+    super.initState();
+    _setupDio();
+  }
+
+  Future<void> _setupDio() async {
+    final dir = await getApplicationDocumentsDirectory();
+
+    final cookieJar = PersistCookieJar(
+      storage: FileStorage('${dir.path}/cookies'),
+    );
+
+    dio = Dio(BaseOptions(
+      baseUrl: baseUrl,
+      headers: {'Content-Type': 'application/json'},
+    ));
+
+    dio.interceptors.add(CookieManager(cookieJar));
+  }
+
+  // ------------------ SAVE RECIPE (now with cookies + dio) ------------------
+
+  Future<void> saveRecipe(BuildContext context) async {
     try {
-      final response = await http.post(
-        Uri.parse(backendUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'title': title,
-          'ingredients': ingredients,
-          'instructions': instructions,
-        }),
+      final response = await dio.post(
+        '/recipes',
+        data: {
+          'title': widget.title,
+          'ingredients': widget.ingredients,
+          'instructions': [widget.instructions],
+        },
+        options: Options(
+          validateStatus: (status) => true,
+        ),
       );
+
+      debugPrint("Save Recipe Status: ${response.statusCode}");
+      debugPrint("Save Recipe Response: ${response.data}");
 
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -37,7 +76,7 @@ class IngredientsScreen extends StatelessWidget {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save: ${response.body}')),
+          SnackBar(content: Text('Failed to save: ${response.data}')),
         );
       }
     } catch (e) {
@@ -47,19 +86,20 @@ class IngredientsScreen extends StatelessWidget {
     }
   }
 
+  // ------------------ UI ------------------
+
   @override
   Widget build(BuildContext context) {
-    // Accessibility colors and style constants
     const backgroundColor = Colors.black;
     const primaryTextColor = Colors.white;
-    const accentTextColor = Color(0xFFFFA500); // Orange
-    const accentGreen = Color(0xFF00C853); // Accessible green
+    const accentTextColor = Color(0xFFFFA500);
+    const accentGreen = Color(0xFF00C853);
 
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
         title: Text(
-          title,
+          widget.title,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 24,
@@ -91,12 +131,12 @@ class IngredientsScreen extends StatelessWidget {
                 ),
                 padding: const EdgeInsets.all(16),
                 child: ListView.builder(
-                  itemCount: ingredients.length,
+                  itemCount: widget.ingredients.length,
                   itemBuilder: (context, index) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Text(
-                        '• ${ingredients[index]}',
+                        '• ${widget.ingredients[index]}',
                         style: const TextStyle(
                           fontSize: 20,
                           color: primaryTextColor,
@@ -108,13 +148,12 @@ class IngredientsScreen extends StatelessWidget {
                 ),
               ),
             ),
+
             const SizedBox(height: 30),
 
-            // Buttons section
             Center(
               child: Column(
                 children: [
-                  // Row 1: Open Camera + View Steps
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -129,15 +168,16 @@ class IngredientsScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => CameraPage(ingredientList: ingredients),
+                                builder: (_) => CameraPage(
+                                  ingredientList: widget.ingredients,
+                                ),
                               ),
                             );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: accentGreen,
                             foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                            textStyle: const TextStyle(fontSize: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             side: const BorderSide(color: Colors.white, width: 2),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -157,9 +197,9 @@ class IngredientsScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => StepsScreen(
-                                  title: title,
-                                  instructions: instructions,
+                                builder: (_) => StepsScreen(
+                                  title: widget.title,
+                                  instructions: widget.instructions,
                                 ),
                               ),
                             );
@@ -167,8 +207,7 @@ class IngredientsScreen extends StatelessWidget {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: accentGreen,
                             foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                            textStyle: const TextStyle(fontSize: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             side: const BorderSide(color: Colors.white, width: 2),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -178,9 +217,9 @@ class IngredientsScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 20),
 
-                  // Row 2: Save Recipe + Back
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -198,7 +237,7 @@ class IngredientsScreen extends StatelessWidget {
                           ),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: accentGreen, width: 2),
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -217,20 +256,19 @@ class IngredientsScreen extends StatelessWidget {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: accentGreen,
                             foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                            textStyle: const TextStyle(fontSize: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             side: const BorderSide(color: Colors.white, width: 2),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                         ),
-                      ),
+                      )
                     ],
                   ),
                 ],
               ),
-            ),
+            )
           ],
         ),
       ),
