@@ -136,7 +136,6 @@ bool _showPassword = false;
       _phoneCtrl.text = prefs.getString("phone") ?? "";
       _is21 = prefs.getBool("is21") ?? false;
 
-      // NEW
     _usernameCtrl.text = prefs.getString("username") ?? "";
     _passwordCtrl.text = prefs.getString("password") ?? "";
     });
@@ -268,7 +267,6 @@ bool _showPassword = false;
               buildTextField("Country", _countryCtrl, highContrastText,
                   highContrastFieldBg, Colors.orange),
 
-              // REMOVED Home Address field entirely
 
               buildTextField(
                   "Do you have any allergies?",
@@ -359,7 +357,7 @@ bool _showPassword = false;
                   highContrastFieldBg, Colors.orange,
                   type: TextInputType.emailAddress),
 
-              // ---------- NEW: AGE CHECKBOX ----------
+              // ---------- AGE CHECKBOX ----------
               CheckboxListTile(
                 title: Text("Are you 21 or older?",
                     style: TextStyle(color: Colors.orange, fontSize: 18)),

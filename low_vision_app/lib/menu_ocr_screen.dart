@@ -278,7 +278,7 @@ class _MenuOCRScreenState extends State<MenuOCRScreen> {
           options: Options(
             validateStatus: (status) {
               debugPrint("🔹 Response status: $status");
-              return true; // allow all status codes so we can see them
+              return true; // allow all status codes so I can see them
             },
           ),
         );

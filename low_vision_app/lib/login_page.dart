@@ -32,7 +32,7 @@ class _LoginPageState extends State<LoginPage> {
     _initDio();
   }
 
-  /// ✅ Configure Dio with persistent cookies
+  /// Configure Dio with persistent cookies
   Future<void> _initDio() async {
     final dir = await getApplicationDocumentsDirectory();
 
